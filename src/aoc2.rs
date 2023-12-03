@@ -83,3 +83,41 @@ pub fn day02_task01() {
     }
     println!("GameIds sum: {}", game_ids_sum);
 }
+
+pub fn day02_task02() {
+    let mut minimum_cubes_power_sum = 0;
+
+    let input_filepath = match std::env::current_dir() {
+        Ok(filepath) => filepath.join("input_d02_t01"),
+        Err(_) => panic!("Cannot find current directory"),
+    };
+
+    let file_content = fs::read_to_string(input_filepath).expect("File could not be loaded");
+
+    for game_line in file_content.split("\n") {
+        let splitted_game: Vec<_> = game_line.split(":").collect();
+        let mut cubes_map: HashMap<&str, u64> = HashMap::new();
+        if splitted_game.len() == 2 {
+            let game = splitted_game[1];
+            for draw in game.split(";") {
+                for draw_item in draw.split(",") {
+                    if let Some((item, count)) = parse_draw_item(draw_item) {
+                        let curr_val = match cubes_map.get(item) {
+                            Some(val) => val,
+                            None => &0,
+                        };
+                        if count > *curr_val {
+                            cubes_map.insert(item, count);
+                        }
+                    }
+                }
+                println!("Minimal number of cubes");
+                for (k, v) in &cubes_map {
+                    println!("{} {}", k, v);
+                }
+            }
+            minimum_cubes_power_sum += cubes_map.values().fold(1, |mul, v| mul*v);
+        }
+    }
+    println!("Sum of powers {}", minimum_cubes_power_sum);
+}
