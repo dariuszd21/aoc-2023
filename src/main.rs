@@ -2,19 +2,53 @@ use std::fs;
 
 fn mapper(given_string: &str) -> u8 {
     let mut number = String::new();
-    for char in given_string.chars() {
-            if char.is_digit(10) {
-                number += &char.to_string();
-                break;
+    let patterns = vec!["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+    let mut f_index = given_string.len();
+    let mut f_pattern = "";
+    let mut l_index = 0;
+    let mut l_pattern = "";
+    for pat in patterns {
+        if let Some(index) = given_string.find(&pat.to_string()) {
+            if index < f_index {
+                f_index = index;
+                f_pattern = pat;
             }
         }
-        for char in given_string.chars().rev() {
-            if char.is_digit(10) {
-                number += &char.to_string();
-                break;
+        if let Some(index) = given_string.rfind(&pat.to_string()) {
+            if index >= l_index {
+                l_index = index;
+                l_pattern = pat;
             }
         }
-    println!("{} {}", given_string, number);
+    }
+
+    match f_pattern {
+        "one" => number += "1",
+        "two" => number += "2",
+        "three" => number += "3",
+        "four" => number += "4",
+        "five" => number += "5",
+        "six" => number += "6",
+        "seven" => number += "7",
+        "eight" => number += "8",
+        "nine" => number += "9",
+        &_ => number += f_pattern,
+    }
+    
+    match l_pattern {
+        "one" => number += "1",
+        "two" => number += "2",
+        "three" => number += "3",
+        "four" => number += "4",
+        "five" => number += "5",
+        "six" => number += "6",
+        "seven" => number += "7",
+        "eight" => number += "8",
+        "nine" => number += "9",
+        &_ => number += l_pattern,
+    }
+
     match number.is_empty() {
         false => number.parse::<u8>().expect("Cannot parse"),
         true => 0,
