@@ -44,11 +44,12 @@ pub fn day02_task01() {
     for game_line in file_content.split("\n") {
         let splitted_game: Vec<_> = game_line.split(":").collect();
         if splitted_game.len() == 2 {
-            let mut cubes_map: HashMap<&str, u64> = HashMap::new();
+            let mut game_accepted = true;
 
             let (game_id, game) = (splitted_game[0], splitted_game[1]);
             let game_id = parse_game_id(game_id);
             for draw in game.split(";") {
+                let mut cubes_map: HashMap<&str, u64> = HashMap::new();
                 for draw_item in draw.split(",") {
                     if let Some((item, count)) = parse_draw_item(draw_item) {
                         let curr_val = match cubes_map.get(item) {
@@ -58,22 +59,22 @@ pub fn day02_task01() {
                         cubes_map.insert(item, curr_val + count);
                     }
                 }
-            }
-
-            let mut game_accepted = true;
-            for (item, count) in &cubes_map {
-                if count > &cubes_rules[item] {
-                    game_accepted = false;
-                    println!("Game {} not accepted, because {}={}", game_id, item, count);
+                for (item, count) in &cubes_map {
+                    if count > &cubes_rules[item] {
+                        game_accepted = false;
+                        println!("Game {} not accepted, because {}={}", game_id, item, count);
+                        break;
+                    }
+                }
+                if !game_accepted {
                     break;
                 }
             }
+            if !game_accepted {
+                continue;
+            }
 
             println!("Game: {} '{}'", game_line, game_accepted);
-            println!(
-                "Res {}: red {} blue {} green {}", game_accepted,
-                cubes_map["red"], cubes_map["blue"], cubes_map["green"]
-            );
             if game_accepted {
                 println!("Accepted: {}", game_id);
                 game_ids_sum += game_id;
