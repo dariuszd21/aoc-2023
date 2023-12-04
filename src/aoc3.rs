@@ -1,6 +1,6 @@
-use std::fs;
+use std::{collections::HashSet, fs};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Number {
     value: u64,
     start_index: usize,
@@ -45,6 +45,7 @@ fn tokenizer(line: &str) -> Vec<Token> {
             }
         }
     }
+    clear_number(&line.len(), &mut number, &mut tokens);
 
     tokens
 }
@@ -52,6 +53,7 @@ fn tokenizer(line: &str) -> Vec<Token> {
 pub fn day03_task01() {
     let input_filepath = match std::env::current_dir() {
         Ok(filepath) => filepath.join("input_d03_t01"),
+        //Ok(filepath) => filepath.join("input_d03_test"),
         Err(_) => panic!("Cannot find current directory"),
     };
 
@@ -61,7 +63,7 @@ pub fn day03_task01() {
 
     let mut prev_symbols = Vec::new();
     let mut prev_numbers = Vec::new();
-    let mut digits_sum = 0;
+    let mut digits_sum: u64 = 0;
     for (line_idx, engine_schematic_line) in file_content.split("\n").enumerate() {
         let current_line_tokens = tokenizer(engine_schematic_line);
         let symbols: Vec<_> = current_line_tokens
@@ -72,7 +74,7 @@ pub fn day03_task01() {
             })
             .collect();
         let mut numbers: Vec<_> = Vec::new();
-        println!("Line :{}", line_idx);
+        let mut used_numbers: HashSet<_> = HashSet::new();
         for token in &current_line_tokens {
             match token {
                 Token::Number(number) => {
@@ -94,7 +96,11 @@ pub fn day03_task01() {
                     }
                     if !number_used {
                         for symbol in &prev_symbols {
-                            if (number.start_index - 1 <= *symbol)
+                            let min_index = match number.start_index {
+                                0 => 0,
+                                _ => number.start_index - 1,
+                            };
+                            if (min_index <= *symbol)
                                 && (*symbol <= number.start_index + number.number_len)
                             {
                                 println!("Symbol above!");
@@ -104,10 +110,11 @@ pub fn day03_task01() {
                         }
                     }
 
-                    if !number_used {
-                        numbers.push(Token::Number(number.clone()));
-                    } else {
+                    if number_used {
+                        println!("Number added to sum: {}", number.value);
                         digits_sum += number.value;
+                    } else {
+                        numbers.push(Token::Number(number.clone()));
                     }
                 }
                 Token::Symbol(symbol_idx) => {
@@ -115,10 +122,27 @@ pub fn day03_task01() {
                     for number in &prev_numbers {
                         match number {
                             Token::Number(number) => {
-                                if (number.start_index - 1 <= *symbol_idx)
+                                if used_numbers.contains(number) {
+                                    println!(
+                                        "Number {} {} {} already added",
+                                        number.value, number.start_index, number.number_len
+                                    );
+                                    continue;
+                                }
+                                println!(
+                                    "Processing number: {} {} {}",
+                                    number.value, number.start_index, number.number_len
+                                );
+                                let min_index = match number.start_index {
+                                    0 => 0,
+                                    _ => number.start_index - 1,
+                                };
+                                if (min_index <= *symbol_idx)
                                     && (*symbol_idx <= number.start_index + number.number_len)
                                 {
                                     println!("Number above!");
+                                    println!("Number added to sum: {}", number.value);
+                                    used_numbers.insert(number);
                                     digits_sum += number.value;
                                 }
                             }
@@ -128,6 +152,7 @@ pub fn day03_task01() {
                 }
             }
         }
+        println!("Line :{} sum until now {}", line_idx, digits_sum);
         prev_symbols = symbols;
         prev_numbers = numbers;
     }
