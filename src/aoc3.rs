@@ -7,12 +7,19 @@ struct Number {
     number_len: usize,
 }
 
+struct DefinedSymbol {
+    value: char,
+    line_idx: usize,
+    col_idx: usize,
+}
+
 enum Token {
     Symbol(usize),
+    DefinedSymbol(DefinedSymbol),
     Number(Number),
 }
 
-fn tokenizer(line: &str) -> Vec<Token> {
+fn tokenizer(line: &str, line_index: usize) -> Vec<Token> {
     let mut tokens = Vec::new();
     let mut number = String::new();
 
@@ -39,9 +46,14 @@ fn tokenizer(line: &str) -> Vec<Token> {
             '.' => {
                 clear_number(&idx, &mut number, &mut tokens);
             }
-            _ => {
+            symbol => {
                 clear_number(&idx, &mut number, &mut tokens);
-                tokens.push(Token::Symbol(idx))
+                tokens.push(Token::Symbol(idx));
+                tokens.push(Token::DefinedSymbol(DefinedSymbol {
+                    value: symbol,
+                    line_idx: line_index,
+                    col_idx: idx,
+                }));
             }
         }
     }
@@ -65,7 +77,7 @@ pub fn day03_task01() {
     let mut prev_numbers = Vec::new();
     let mut digits_sum: u64 = 0;
     for (line_idx, engine_schematic_line) in file_content.split("\n").enumerate() {
-        let current_line_tokens = tokenizer(engine_schematic_line);
+        let current_line_tokens = tokenizer(engine_schematic_line, line_idx);
         let symbols: Vec<_> = current_line_tokens
             .iter()
             .filter_map(|i| match *i {
@@ -150,6 +162,7 @@ pub fn day03_task01() {
                         }
                     }
                 }
+                _ => (),
             }
         }
         println!("Line :{} sum until now {}", line_idx, digits_sum);
