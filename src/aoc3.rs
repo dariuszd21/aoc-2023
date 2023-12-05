@@ -305,14 +305,22 @@ pub fn day03_task02() {
     let mut gear_ratios_sum = 0;
     for (sym, values) in &symbols_map {
         match sym {
-            DefinedSymbol{value: '*', line_idx, col_idx} => {
-                println!("Symbol {} {} has {} adjacents", line_idx, col_idx, values.len());
+            DefinedSymbol {
+                value: '*',
+                line_idx,
+                col_idx,
+            } => {
+                println!(
+                    "Symbol {} {} has {} adjacents",
+                    line_idx,
+                    col_idx,
+                    values.len()
+                );
                 if values.len() == 2 {
-                    gear_ratios_sum += values[0].value*values[1].value;
+                    gear_ratios_sum += values[0].value * values[1].value;
                 }
             }
-            _ => {
-            }
+            _ => {}
         }
     }
     println!("Gear ratios sum {}", gear_ratios_sum);
