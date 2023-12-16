@@ -16,8 +16,8 @@ fn find_in_map(map: &HashMap<(u64, u64), u64>, val: u64) -> u64 {
 
 pub fn day05_task01() {
     let input_filepath = match std::env::current_dir() {
-        //Ok(filepath) => filepath.join("input_d05_t01"),
-        Ok(filepath) => filepath.join("input_d05_test"),
+        Ok(filepath) => filepath.join("input_d05_t01"),
+        //Ok(filepath) => filepath.join("input_d05_test"),
         Err(_) => panic!("Cannot find current directory"),
     };
 
@@ -121,8 +121,10 @@ pub fn day05_task01() {
         locations.push(found);
     }
 
-    for l in locations {
-        println!("Location {}", l);
-    }
-
+    let min_location = match locations.iter().min() {
+        Some(val) => *val,
+        None => 0,
+    };
+    println!("Minimal location: {}", min_location);
+    
 }
