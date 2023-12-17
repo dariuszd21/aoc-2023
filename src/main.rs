@@ -1,6 +1,5 @@
-mod aoc6;
+mod aoc7;
 
 fn main() {
-    aoc6::day06_task01();
-    aoc6::day06_task02();
+    aoc7::day07_task01();
 }
