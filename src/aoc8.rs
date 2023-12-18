@@ -5,6 +5,31 @@ enum Direction {
     Left,
 }
 
+
+fn lcm(first: usize, second: usize) -> usize {
+    first * second / gcd(first, second)
+}
+
+fn gcd(first: usize, second: usize) -> usize {
+    let mut max = first;
+    let mut min = second;
+    if min > max {
+        let val = max;
+        max = min;
+        min = val;
+    }
+
+    loop {
+        let res = max % min;
+        if res == 0 {
+            return min;
+        }
+
+        max = min;
+        min = res;
+    }
+}
+
 fn parse_instructions(line: &str) -> Vec<Direction> {
     let mut directions = Vec::new();
     for c in line.chars() {
@@ -124,55 +149,60 @@ pub fn day08_task02() {
         add_crossroad_to_map(&mut map, line);
     }
 
-    let mut all_starting_nodes: Vec<String> = map
+    let mut traversing_nodes: Vec<String> = map
         .clone()
         .into_keys()
         .filter(|k| k.ends_with("A"))
         .collect();
 
-    let mut moves = 0;
+    let rest_cycle = directions.iter().clone().cycle();
+    let mut aaa_cycle = directions.iter().clone().cycle();
 
-    for (i, d) in directions.iter().cycle().enumerate() {
-        let mut all_ending_nodes: Vec<_> = Vec::new();
+    let mut current_solution = "MTA".to_string();
+    let mut steps = 0;
 
-        moves += 1;
-        for n in &all_starting_nodes {
-            if let Some(coords) = map.get(n) {
-                let (left, right) = coords.clone();
+    let mut calculated_lcm = 1;
+
+    for n in &traversing_nodes {
+        if let Some(next_steps) = map.get(n) {
+            //for d in directions.iter().cycle() {
+            let (mut left, mut right) = next_steps.clone();
+            //for d in directions.iter() {
+            let mut steps = 0;
+            for d in directions.iter().cycle() {
+                steps += 1;
                 match d {
-                    Direction::Left => match map.get(&left) {
-                        Some(_) => {
-                            all_ending_nodes.push(left.clone());
+                    Direction::Left => {
+                        if left.ends_with("Z") {
+                            break;
                         }
-                        None => (),
-                    },
-                    Direction::Right => match map.get(&right) {
-                        Some(_) => {
-                            all_ending_nodes.push(right.clone());
+                        match map.get(&left) {
+                            Some((l, r)) => {
+                                left = l.to_string();
+                                right = r.to_string();
+                            }
+                            None => (),
                         }
-                        None => (),
-                    },
-                }
-            }
-        }
-
-        if all_ending_nodes.iter().filter(|n| n.ends_with("Z")).count() == all_starting_nodes.len()
-        {
-            println!("All ending nodes found in {} steps. Exiting...", moves);
-            break;
-        }
-        if i % 1000 == 0 {
-            let mut show_it = true;
-            for n in &all_ending_nodes {
-                if n.ends_with("Z") {
-                    if show_it {
-                        println!("State after {} iterations", i);
-                        show_it = false;
                     }
-                    println!("Node: {}", n);
+                    Direction::Right => {
+                        if right.ends_with("Z") {
+                            break;
+                        }
+                        match map.get(&right) {
+                            Some((l, r)) => {
+                                left = l.to_string();
+                                right = r.to_string();
+                            }
+                            None => (),
+                        }
+                    }
                 }
             }
+
+
+            calculated_lcm = lcm(calculated_lcm, steps);
+            println!("Find finish in {} steps for {}", steps, n);
         }
-        all_starting_nodes = all_ending_nodes;
     }
+    println!("LCM: {}", calculated_lcm);
 }
