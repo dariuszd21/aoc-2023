@@ -5,7 +5,6 @@ enum Direction {
     Left,
 }
 
-
 fn lcm(first: usize, second: usize) -> usize {
     first * second / gcd(first, second)
 }
@@ -149,25 +148,17 @@ pub fn day08_task02() {
         add_crossroad_to_map(&mut map, line);
     }
 
-    let mut traversing_nodes: Vec<String> = map
+    let traversing_nodes: Vec<String> = map
         .clone()
         .into_keys()
         .filter(|k| k.ends_with("A"))
         .collect();
 
-    let rest_cycle = directions.iter().clone().cycle();
-    let mut aaa_cycle = directions.iter().clone().cycle();
-
-    let mut current_solution = "MTA".to_string();
-    let mut steps = 0;
-
     let mut calculated_lcm = 1;
 
     for n in &traversing_nodes {
         if let Some(next_steps) = map.get(n) {
-            //for d in directions.iter().cycle() {
             let (mut left, mut right) = next_steps.clone();
-            //for d in directions.iter() {
             let mut steps = 0;
             for d in directions.iter().cycle() {
                 steps += 1;
@@ -198,7 +189,6 @@ pub fn day08_task02() {
                     }
                 }
             }
-
 
             calculated_lcm = lcm(calculated_lcm, steps);
             println!("Find finish in {} steps for {}", steps, n);
