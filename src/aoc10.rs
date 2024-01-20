@@ -27,8 +27,7 @@ fn recursive_map_pass(
     if let Some(&cal_distance) = distance_map.get(&pos) {
         if current_distance < cal_distance {
             distance_map.insert(pos, current_distance);
-        }
-        else {
+        } else {
             return;
         }
     };
@@ -83,7 +82,9 @@ fn recursive_map_pass(
     let right_tile = (pos.0, pos.1 + 1);
     if let Some(&ref dir) = map.get(&right_tile) {
         match dir {
-            Direction::Horizontal => recursive_map_pass(right_tile, new_distance, map, distance_map),
+            Direction::Horizontal => {
+                recursive_map_pass(right_tile, new_distance, map, distance_map)
+            }
             Direction::NorthWest => recursive_map_pass(right_tile, new_distance, map, distance_map),
             Direction::SouthWest => recursive_map_pass(right_tile, new_distance, map, distance_map),
             _ => (),
@@ -91,20 +92,8 @@ fn recursive_map_pass(
     }
 }
 
-pub fn day10_task1() {
-    let input_filepath = match std::env::current_dir() {
-        //Ok(filepath) => filepath.join("input_d10_test"),
-        Ok(filepath) => filepath.join("input_d10_t01"),
-        Err(_) => panic!("Cannot find current directory"),
-    };
-
-    println!("Input filepath: {}", input_filepath.display());
-
-    let file_content = fs::read_to_string(input_filepath).expect("File could not be loaded");
-
+fn create_map(file_content: &str) -> HashMap<(usize, usize), Direction> {
     let mut map: HashMap<(usize, usize), Direction> = HashMap::new();
-    let mut distance_map: HashMap<(usize, usize), u64> = HashMap::new();
-    let mut start_idx: (usize, usize) = (0, 0);
 
     for (row_idx, row) in file_content.split("\n").enumerate() {
         for (col_idx, char) in row.chars().enumerate() {
@@ -118,20 +107,50 @@ pub fn day10_task1() {
                 'S' => Direction::Start,
                 _ => Direction::Ground,
             };
-            if dir == Direction::Start {
-                start_idx.0 = row_idx;
-                start_idx.1 = col_idx;
-            }
 
             map.insert((row_idx, col_idx), dir);
         }
     }
 
+    return map;
+}
+
+fn find_start(map: &HashMap<(usize, usize), Direction>) -> (usize, usize) {
+    let mut start_idx: (usize, usize) = (0, 0);
+    for (pos, val) in map.iter() {
+        match val {
+            Direction::Start => {
+                start_idx = *pos;
+            }
+            _ => (),
+        }
+    }
+    return start_idx;
+}
+
+pub fn day10_task1() {
+    let input_filepath = match std::env::current_dir() {
+        //Ok(filepath) => filepath.join("input_d10_test"),
+        Ok(filepath) => filepath.join("input_d10_t01"),
+        Err(_) => panic!("Cannot find current directory"),
+    };
+
+    println!("Input filepath: {}", input_filepath.display());
+
+    let file_content = fs::read_to_string(input_filepath).expect("File could not be loaded");
+
+    let mut distance_map: HashMap<(usize, usize), u64> = HashMap::new();
+    let map = create_map(&file_content);
+    let start_idx = find_start(&map);
+
     recursive_map_pass(start_idx, 0, &map, &mut distance_map);
 
     println!("{} {}", start_idx.0, start_idx.1);
 
-    if let Some((max_idx, v)) = distance_map.iter().max_by(|(_, val1), (_, val2)| val1.cmp(val2)) {
-       println!("{},{} {}", max_idx.0, max_idx.1, v); 
+    if let Some((max_idx, v)) = distance_map
+        .iter()
+        .max_by(|(_, val1), (_, val2)| val1.cmp(val2))
+    {
+        println!("{},{} {}", max_idx.0, max_idx.1, v);
     }
 }
