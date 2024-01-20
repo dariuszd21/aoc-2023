@@ -33,8 +33,43 @@ fn recursive_map_pass(
     };
     distance_map.insert(pos, current_distance);
     let new_distance = current_distance + 1;
+    let current_direction = match map.get(&pos) {
+        Some(dir) => dir,
+        None => &Direction::Start,
+    };
 
-    if pos.0 > 0 {
+    let north = match current_direction {
+        Direction::Start => true,
+        Direction::Vertical => true,
+        Direction::NorthWest => true,
+        Direction::NorthEast => true,
+        _ => false,
+    };
+    let south = match current_direction {
+        Direction::Start => true,
+        Direction::Vertical => true,
+        Direction::SouthWest => true,
+        Direction::SouthEast => true,
+        _ => false,
+    };
+
+    let west = match current_direction {
+        Direction::Start => true,
+        Direction::Horizontal => true,
+        Direction::NorthWest => true,
+        Direction::SouthWest => true,
+        _ => false,
+    };
+
+    let east = match current_direction {
+        Direction::Start => true,
+        Direction::Horizontal => true,
+        Direction::NorthEast => true,
+        Direction::SouthEast => true,
+        _ => false,
+    };
+
+    if pos.0 > 0 && north {
         let upper_tile = (pos.0 - 1, pos.1);
         if let Some(&ref dir) = map.get(&upper_tile) {
             match dir {
@@ -52,16 +87,24 @@ fn recursive_map_pass(
         }
     }
     let lower_tile = (pos.0 + 1, pos.1);
-    if let Some(&ref dir) = map.get(&lower_tile) {
-        match dir {
-            Direction::Vertical => recursive_map_pass(lower_tile, new_distance, map, distance_map),
-            Direction::NorthEast => recursive_map_pass(lower_tile, new_distance, map, distance_map),
-            Direction::NorthWest => recursive_map_pass(lower_tile, new_distance, map, distance_map),
-            _ => (),
-        };
+    if south {
+        if let Some(&ref dir) = map.get(&lower_tile) {
+            match dir {
+                Direction::Vertical => {
+                    recursive_map_pass(lower_tile, new_distance, map, distance_map)
+                }
+                Direction::NorthEast => {
+                    recursive_map_pass(lower_tile, new_distance, map, distance_map)
+                }
+                Direction::NorthWest => {
+                    recursive_map_pass(lower_tile, new_distance, map, distance_map)
+                }
+                _ => (),
+            };
+        }
     }
 
-    if pos.1 > 0 {
+    if pos.1 > 0 && west {
         let left_tile = (pos.0, pos.1 - 1);
         if let Some(&ref dir) = map.get(&left_tile) {
             match dir {
@@ -80,15 +123,21 @@ fn recursive_map_pass(
     }
 
     let right_tile = (pos.0, pos.1 + 1);
-    if let Some(&ref dir) = map.get(&right_tile) {
-        match dir {
-            Direction::Horizontal => {
-                recursive_map_pass(right_tile, new_distance, map, distance_map)
-            }
-            Direction::NorthWest => recursive_map_pass(right_tile, new_distance, map, distance_map),
-            Direction::SouthWest => recursive_map_pass(right_tile, new_distance, map, distance_map),
-            _ => (),
-        };
+    if east {
+        if let Some(&ref dir) = map.get(&right_tile) {
+            match dir {
+                Direction::Horizontal => {
+                    recursive_map_pass(right_tile, new_distance, map, distance_map)
+                }
+                Direction::NorthWest => {
+                    recursive_map_pass(right_tile, new_distance, map, distance_map)
+                }
+                Direction::SouthWest => {
+                    recursive_map_pass(right_tile, new_distance, map, distance_map)
+                }
+                _ => (),
+            };
+        }
     }
 }
 
@@ -145,12 +194,60 @@ pub fn day10_task1() {
 
     recursive_map_pass(start_idx, 0, &map, &mut distance_map);
 
-    println!("{} {}", start_idx.0, start_idx.1);
+    if let Some((max_idx, v)) = distance_map
+        .iter()
+        .max_by(|(_, val1), (_, val2)| val1.cmp(val2))
+    {
+        println!("{},{} {}", max_idx.0, max_idx.1, v);
+    }
+}
+
+pub fn day10_task2() {
+    let input_filepath = match std::env::current_dir() {
+        Ok(filepath) => filepath.join("input_d10_test"),
+        //Ok(filepath) => filepath.join("input_d10_t01"),
+        Err(_) => panic!("Cannot find current directory"),
+    };
+
+    println!("Input filepath: {}", input_filepath.display());
+
+    let file_content = fs::read_to_string(input_filepath).expect("File could not be loaded");
+
+    let map = create_map(&file_content);
+    let start_idx = find_start(&map);
+    let mut distance_map: HashMap<(usize, usize), u64> = HashMap::new();
+
+    recursive_map_pass(start_idx, 0, &map, &mut distance_map);
 
     if let Some((max_idx, v)) = distance_map
         .iter()
         .max_by(|(_, val1), (_, val2)| val1.cmp(val2))
     {
         println!("{},{} {}", max_idx.0, max_idx.1, v);
+    }
+
+    let upper_bound = 40;
+
+    for i in 0..upper_bound {
+        for j in 0..upper_bound {
+            if let Some(_) = distance_map.get(&(i, j)) {
+                if let Some(&ref direction) = map.get(&(i, j)) {
+                    let char = match direction {
+                        Direction::Vertical => '|',
+                        Direction::Horizontal => '-',
+                        Direction::NorthEast => 'L',
+                        Direction::NorthWest => 'J',
+                        Direction::SouthEast => 'F',
+                        Direction::SouthWest => '7',
+                        Direction::Start => 'S',
+                        Direction::Ground => '.',
+                    };
+                    print!("{}", char);
+                };
+            } else {
+                print!(" ");
+            }
+        }
+        print!("\n");
     }
 }
