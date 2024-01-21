@@ -12,6 +12,21 @@ enum Direction {
     Ground,
 }
 
+#[derive(PartialEq, Eq)]
+enum Movement {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[derive(PartialEq, Eq)]
+enum TileMarker {
+    Pipe,
+    Inside,
+    Outside,
+}
+
 //    L is a 90-degree bend connecting north and east.
 //    J is a 90-degree bend connecting north and west.
 //    7 is a 90-degree bend connecting south and west.
@@ -177,6 +192,65 @@ fn find_start(map: &HashMap<(usize, usize), Direction>) -> (usize, usize) {
     return start_idx;
 }
 
+fn print_map(max_coordinate: (usize, usize), tile_map: &HashMap<(usize, usize), TileMarker>) {
+    for i in 0..max_coordinate.0 {
+        for j in 0..max_coordinate.1 {
+            if let Some(&ref tile_marker) = tile_map.get(&(i, j)) {
+                let tile_char = match tile_marker {
+                    TileMarker::Pipe => '*',
+                    TileMarker::Outside => 'O',
+                    TileMarker::Inside => 'I',
+                };
+
+                print!("{}", tile_char);
+            } else {
+                print!("U");
+            }
+        }
+        print!("\n");
+    }
+}
+
+fn mark_tile_outside(
+    tile_idx: (usize, usize),
+    tile_map: &mut HashMap<(usize, usize), TileMarker>,
+) -> TileMarker {
+    match tile_map.get(&tile_idx) {
+        Some(tile_marker) => match tile_marker {
+            TileMarker::Outside => TileMarker::Outside,
+            TileMarker::Pipe => TileMarker::Pipe,
+            TileMarker::Inside => {
+                tile_map.insert(tile_idx, TileMarker::Outside);
+                TileMarker::Outside
+            }
+        },
+        None => {
+            tile_map.insert(tile_idx, TileMarker::Outside);
+            TileMarker::Outside
+        }
+    }
+}
+
+fn mark_tile_inside(
+    tile_idx: (usize, usize),
+    tile_map: &mut HashMap<(usize, usize), TileMarker>,
+) -> TileMarker {
+    match tile_map.get(&tile_idx) {
+        Some(tile_marker) => match tile_marker {
+            TileMarker::Inside => TileMarker::Inside,
+            TileMarker::Pipe => TileMarker::Pipe,
+            TileMarker::Outside => {
+                tile_map.insert(tile_idx, TileMarker::Inside);
+                TileMarker::Inside
+            }
+        },
+        None => {
+            tile_map.insert(tile_idx, TileMarker::Inside);
+            TileMarker::Inside
+        }
+    }
+}
+
 pub fn day10_task1() {
     let input_filepath = match std::env::current_dir() {
         //Ok(filepath) => filepath.join("input_d10_test"),
@@ -204,8 +278,8 @@ pub fn day10_task1() {
 
 pub fn day10_task2() {
     let input_filepath = match std::env::current_dir() {
-        Ok(filepath) => filepath.join("input_d10_test"),
-        //Ok(filepath) => filepath.join("input_d10_t01"),
+        //Ok(filepath) => filepath.join("input_d10_test"),
+        Ok(filepath) => filepath.join("input_d10_t01"),
         Err(_) => panic!("Cannot find current directory"),
     };
 
@@ -226,28 +300,274 @@ pub fn day10_task2() {
         println!("{},{} {}", max_idx.0, max_idx.1, v);
     }
 
-    let upper_bound = 40;
+    let mut tile_map: HashMap<(usize, usize), TileMarker> = HashMap::new();
 
-    for i in 0..upper_bound {
-        for j in 0..upper_bound {
-            if let Some(_) = distance_map.get(&(i, j)) {
-                if let Some(&ref direction) = map.get(&(i, j)) {
-                    let char = match direction {
-                        Direction::Vertical => '|',
-                        Direction::Horizontal => '-',
-                        Direction::NorthEast => 'L',
-                        Direction::NorthWest => 'J',
-                        Direction::SouthEast => 'F',
-                        Direction::SouthWest => '7',
-                        Direction::Start => 'S',
-                        Direction::Ground => '.',
-                    };
-                    print!("{}", char);
-                };
-            } else {
-                print!(" ");
-            }
+    let mut movement_direction = Movement::Down;
+    let mut loop_item = start_idx;
+    for (item_idx, distance) in distance_map.iter() {
+        if *distance == (1 as u64) {
+            loop_item = item_idx.clone();
+            break;
         }
-        print!("\n");
+    }
+    println!("Starting point {} {}", loop_item.0, loop_item.1);
+
+    if let Some(&max_coordinate) = map.keys().max() {
+        loop {
+            if loop_item == start_idx {
+                break;
+            }
+            let (loop_item_row_idx, loop_item_col_idx) = loop_item;
+            if let Some(&ref direction) = map.get(&(loop_item_row_idx, loop_item_col_idx)) {
+                tile_map.insert((loop_item_row_idx, loop_item_col_idx), TileMarker::Pipe);
+                movement_direction = match movement_direction {
+                    Movement::Up => {
+                        for row in (0..loop_item_row_idx).rev() {
+                            let tile_coords = (row, loop_item_col_idx);
+                            match mark_tile_outside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for col in loop_item_col_idx + 1..=max_coordinate.1 {
+                            let tile_coords = (loop_item_row_idx, col);
+                            match mark_tile_outside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for col in (0..loop_item_col_idx).rev() {
+                            let tile_coords = (loop_item_row_idx, col);
+                            match mark_tile_inside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        loop_item = match direction {
+                            Direction::SouthWest => (loop_item_row_idx, loop_item_col_idx - 1),
+                            Direction::SouthEast => (loop_item_row_idx, loop_item_col_idx + 1),
+                            _ => (loop_item_row_idx - 1, loop_item_col_idx),
+                        };
+                        match direction {
+                            Direction::SouthWest => Movement::Left,
+                            Direction::SouthEast => Movement::Right,
+                            _ => movement_direction,
+                        }
+                    }
+                    Movement::Down => {
+                        for row in loop_item_row_idx + 1..=max_coordinate.0 {
+                            let tile_coords = (row, loop_item_col_idx);
+                            match mark_tile_outside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for col in loop_item_col_idx + 1..=max_coordinate.1 {
+                            let tile_coords = (loop_item_row_idx, col);
+                            match mark_tile_inside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for col in (0..loop_item_col_idx).rev() {
+                            let tile_coords = (loop_item_row_idx, col);
+                            match mark_tile_outside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+
+                        loop_item = match direction {
+                            Direction::NorthEast => (loop_item_row_idx, loop_item_col_idx + 1),
+                            Direction::NorthWest => (loop_item_row_idx, loop_item_col_idx - 1),
+                            _ => (loop_item_row_idx + 1, loop_item_col_idx),
+                        };
+
+                        match direction {
+                            Direction::NorthWest => Movement::Left,
+                            Direction::NorthEast => Movement::Right,
+                            _ => movement_direction,
+                        }
+                    }
+                    Movement::Left => {
+                        for col in (0..loop_item_col_idx).rev() {
+                            let item_idx = (loop_item_row_idx, col);
+                            match mark_tile_outside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for row in loop_item_row_idx + 1..=max_coordinate.0 {
+                            let item_idx = (row, loop_item_col_idx);
+                            match mark_tile_inside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for row in (0..loop_item_row_idx).rev() {
+                            let item_idx = (row, loop_item_col_idx);
+                            match mark_tile_outside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+
+                        loop_item = match direction {
+                            Direction::NorthEast => (loop_item_row_idx - 1, loop_item_col_idx),
+                            Direction::SouthEast => (loop_item_row_idx + 1, loop_item_col_idx),
+                            _ => (loop_item_row_idx, loop_item_col_idx - 1),
+                        };
+                        match direction {
+                            Direction::SouthEast => Movement::Down,
+                            Direction::NorthEast => Movement::Up,
+                            _ => movement_direction,
+                        }
+                    }
+                    Movement::Right => {
+                        for col in loop_item_col_idx + 1..=max_coordinate.1 {
+                            let item_idx = (loop_item_row_idx, col);
+                            match mark_tile_outside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for row in loop_item_row_idx + 1..=max_coordinate.0 {
+                            let item_idx = (row, loop_item_col_idx);
+                            match mark_tile_outside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for row in (0..loop_item_row_idx).rev() {
+                            let item_idx = (row, loop_item_col_idx);
+                            match mark_tile_inside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        loop_item = match direction {
+                            Direction::NorthWest => (loop_item_row_idx - 1, loop_item_col_idx),
+                            Direction::SouthWest => (loop_item_row_idx + 1, loop_item_col_idx),
+                            _ => (loop_item_row_idx, loop_item_col_idx + 1),
+                        };
+                        match direction {
+                            Direction::SouthWest => Movement::Down,
+                            Direction::NorthWest => Movement::Up,
+                            _ => movement_direction,
+                        }
+                    }
+                };
+                match movement_direction {
+                    Movement::Up => {
+                        for row in (0..loop_item_row_idx).rev() {
+                            let tile_coords = (row, loop_item_col_idx);
+                            match mark_tile_outside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for col in loop_item_col_idx + 1..=max_coordinate.1 {
+                            let tile_coords = (loop_item_row_idx, col);
+                            match mark_tile_outside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for col in (0..loop_item_col_idx).rev() {
+                            let tile_coords = (loop_item_row_idx, col);
+                            match mark_tile_inside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                    }
+                    Movement::Down => {
+                        for row in loop_item_row_idx + 1..=max_coordinate.0 {
+                            let tile_coords = (row, loop_item_col_idx);
+                            match mark_tile_outside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for col in loop_item_col_idx + 1..=max_coordinate.1 {
+                            let tile_coords = (loop_item_row_idx, col);
+                            match mark_tile_inside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for col in (0..loop_item_col_idx).rev() {
+                            let tile_coords = (loop_item_row_idx, col);
+                            match mark_tile_outside(tile_coords, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                    }
+                    Movement::Left => {
+                        for col in (0..loop_item_col_idx).rev() {
+                            let item_idx = (loop_item_row_idx, col);
+                            match mark_tile_outside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for row in loop_item_row_idx + 1..=max_coordinate.0 {
+                            let item_idx = (row, loop_item_col_idx);
+                            match mark_tile_inside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for row in (0..loop_item_row_idx).rev() {
+                            let item_idx = (row, loop_item_col_idx);
+                            match mark_tile_outside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                    }
+                    Movement::Right => {
+                        for col in loop_item_col_idx + 1..=max_coordinate.1 {
+                            let item_idx = (loop_item_row_idx, col);
+                            match mark_tile_outside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for row in loop_item_row_idx + 1..=max_coordinate.0 {
+                            let item_idx = (row, loop_item_col_idx);
+                            match mark_tile_outside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                        for row in (0..loop_item_row_idx).rev() {
+                            let item_idx = (row, loop_item_col_idx);
+                            match mark_tile_inside(item_idx, &mut tile_map) {
+                                TileMarker::Pipe => break,
+                                _ => (),
+                            }
+                        }
+                    }
+                };
+            }
+            //print_map(max_coordinate, &tile_map);
+
+            //match movement_direction {
+            //   Movement::Up => println!("Going UP"),
+            //   Movement::Down => println!("Going DOWN"),
+            //   Movement::Left => println!("Going LEFT"),
+            //   Movement::Right => println!("Going RIGHT"),
+            //};
+        }
+        print_map(max_coordinate, &tile_map);
+        println!(
+            "Inside {}",
+            tile_map
+                .values()
+                .filter(|&x| *x == TileMarker::Inside)
+                .count()
+        );
     }
 }
