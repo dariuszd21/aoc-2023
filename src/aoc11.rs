@@ -52,7 +52,7 @@ fn expand_galaxy(galaxy_map: &mut Vec<Vec<Field>>) {
                     }
                 }
                 Field::Galaxy => {
-                    println!("Not an extension candidate! {}", idx);
+                    //println!("Not an extension candidate! col {}", idx);
                 }
             }
         }
@@ -70,10 +70,10 @@ fn expand_galaxy(galaxy_map: &mut Vec<Vec<Field>>) {
         match galaxies_count {
             0 => {
                 galaxies_to_add.push(galaxy_idx);
-            },
+            }
             _ => {
-                println!("Not an expansion candidate row {}", galaxy_idx);
-            },
+                //println!("Not an expansion candidate! row {}", galaxy_idx);
+            }
         }
     }
     let single_galaxy_len = match galaxy_map.first() {
@@ -84,6 +84,19 @@ fn expand_galaxy(galaxy_map: &mut Vec<Vec<Field>>) {
     for galaxy_to_add in galaxies_to_add {
         galaxy_map.insert(galaxy_to_add, vec![Field::EmptySpace; single_galaxy_len])
     }
+}
+
+fn find_galaxies(galaxy_map: &Vec<Vec<Field>>) -> Vec<(usize, usize)> {
+    let mut galaxies_vec = Vec::new();
+    for (row_idx, galaxy_row) in galaxy_map.iter().enumerate() {
+        for (col_idx, galaxy_tile) in galaxy_row.iter().enumerate() {
+            match galaxy_tile {
+                Field::Galaxy => galaxies_vec.push((row_idx, col_idx)),
+                Field::EmptySpace => (),
+            }
+        }
+    }
+    galaxies_vec
 }
 
 fn print_galaxy(galaxy_map: &Vec<Vec<Field>>) {
@@ -101,8 +114,8 @@ fn print_galaxy(galaxy_map: &Vec<Vec<Field>>) {
 
 pub fn day11_task01() {
     let input_filepath = match std::env::current_dir() {
-        //Ok(filepath) => filepath.join("input_d11_t01"),
-        Ok(filepath) => filepath.join("input_d11_test"),
+        Ok(filepath) => filepath.join("input_d11_t01"),
+        //Ok(filepath) => filepath.join("input_d11_test"),
         Err(_) => panic!("Cannot find current directory"),
     };
 
@@ -114,5 +127,27 @@ pub fn day11_task01() {
 
     expand_galaxy(&mut galaxy_map);
 
-    print_galaxy(&galaxy_map);
+    let galaxies = find_galaxies(&galaxy_map);
+
+    let mut distances_sum = 0;
+    for galaxy_id in 0..galaxies.len() - 1 {
+        let galaxy_coordinates = match galaxies.get(galaxy_id) {
+            Some(&x) => x,
+            None => (0, 0),
+        };
+        for next_galaxy_id in galaxy_id+1..galaxies.len() {
+            let next_galaxy_coordinates = match galaxies.get(next_galaxy_id) {
+                Some(&y) => y,
+                None => (0, 0),
+            };
+            
+            let distance = (next_galaxy_coordinates.1 as i64 - galaxy_coordinates.1 as i64).abs()
+                + (next_galaxy_coordinates.0 as i64 - galaxy_coordinates.0 as i64).abs();
+
+            distances_sum += distance;
+        }
+    }
+    println!("Sum distances: {}", distances_sum);
+
+    //print_galaxy(&galaxy_map);
 }
