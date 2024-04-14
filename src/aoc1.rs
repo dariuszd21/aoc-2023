@@ -79,3 +79,13 @@ pub fn day01_task01() {
         break;
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_mapper_multiple_numbers() {
+        assert_eq!(mapper("three one two"), 32);
+    }
+}
