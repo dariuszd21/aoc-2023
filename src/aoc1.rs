@@ -81,7 +81,7 @@ pub fn day01_task01() {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
