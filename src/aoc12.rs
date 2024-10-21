@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 enum PartState {
     WORKING,
     DAMAGED,
@@ -27,6 +27,46 @@ fn count_damaged(parts_state: &Vec<PartState>) -> Vec<u32> {
     }
 
     broken_count
+}
+
+fn expected_damaged_and_working(damaged: &Vec<u32>) -> (usize, usize) {
+    let expected_damaged: u32 = damaged.iter().sum();
+    let expected_working = damaged.len() - 1;
+
+    (expected_damaged.try_into().unwrap(), expected_working)
+}
+
+fn count_in_row(parts_state: &Vec<PartState>, state: &PartState) -> usize {
+    parts_state.iter().filter(|&p| p == state).count()
+}
+
+fn count_damaged_in_blueprint(parts_state: &Vec<PartState>) -> usize {
+    count_in_row(parts_state, &PartState::DAMAGED)
+}
+
+fn count_unknown_in_blueprint(parts_state: &Vec<PartState>) -> usize {
+    count_in_row(parts_state, &PartState::UNKNOWN)
+}
+
+fn count_working_in_blueprint(parts_state: &Vec<PartState>) -> usize {
+    let mut first = parts_state.len() - 1;
+    let mut last = 0;
+
+    for i in 0..parts_state.len() {
+        match parts_state[i] {
+            PartState::WORKING => {}
+            PartState::DAMAGED | PartState::UNKNOWN => {
+                if i < first {
+                    first = i;
+                }
+                if i > last {
+                    last = i;
+                }
+            }
+        }
+    }
+
+    count_in_row(&parts_state[first..last].into(), &PartState::WORKING)
 }
 
 fn parse_row(line: &str) -> (Vec<PartState>, Vec<u32>) {
@@ -90,24 +130,94 @@ fn permutate(parts_state: &Vec<PartState>) -> Vec<Vec<PartState>> {
 }
 
 fn solve(file_path: &Path) -> u64 {
-    let mut res = 0;
+    let mut res = 1;
 
     let file_content = fs::read_to_string(file_path).expect("File could not be loaded");
     for line in file_content.split("\n") {
         let (parts_state, damaged_amount) = parse_row(line);
+        let (expected_damaged, expected_working) = expected_damaged_and_working(&damaged_amount);
+        let number_of_damaged = count_damaged_in_blueprint(&parts_state);
+        let number_of_unknown = count_unknown_in_blueprint(&parts_state);
+        let number_of_working = count_working_in_blueprint(&parts_state);
+        let number_of_missing_working = if expected_working > number_of_working {
+            expected_working - number_of_working
+        } else {
+            0
+        };
+        let number_of_missing_damaged = expected_damaged - number_of_damaged;
+        println!(
+            "Number of per for {} : already damaged ({}), available slots ({})",
+            line, number_of_damaged, number_of_unknown,
+        );
+        println!(
+            "Expected damaged: {}, expected working: {}. Damaged to draw: {}, missing working: {}",
+            expected_damaged,
+            expected_working,
+            number_of_missing_damaged,
+            number_of_missing_working,
+        );
+        let mut local_res = 1;
+        for _ in 1..(number_of_unknown - number_of_missing_damaged - number_of_missing_working) {
+            local_res *= 2;
+        }
+        println!("Res: {}", local_res);
+        println!(
+            "Res2: {}",
+            (number_of_missing_damaged + number_of_missing_working) * number_of_unknown
+        );
+        res += local_res;
+
+        let mut old_res = 0;
         let permutations = permutate(&parts_state);
-        // println!("Number of per for {}, {}", line, permutations.len());
-        for permutation in permutations {
+        let (mut ends_with_damaged, mut ends_with_working): (u64, u64) = (0, 0);
+        for permutation in &permutations {
             if count_damaged(&permutation) == damaged_amount {
-                res += 1;
+                if let Some(&part) = permutation.last() {
+                    match part {
+                        PartState::WORKING => ends_with_working += 1,
+                        PartState::DAMAGED => ends_with_damaged += 1,
+                        PartState::UNKNOWN => (),
+                    }
+                }
+                old_res += 1;
             }
         }
+        let mut number_of_working_prefixed: u64 = 0;
+        if ends_with_working > 0 {
+            let mut extended_part_state = parts_state.clone();
+            extended_part_state.insert(0, PartState::UNKNOWN);
+            for permutation in permutate(&extended_part_state) {
+                if count_damaged(&permutation) == damaged_amount {
+                    number_of_working_prefixed += 1;
+                }
+            }
+        }
+        println!("Old res: {}", old_res);
+        println!(
+            "Number of ending with '#': {}, with '.': {}",
+            ends_with_damaged, ends_with_working
+        );
+
+        println!(
+            "Results for x5: {}",
+            ends_with_damaged.pow(5) + ends_with_working * number_of_working_prefixed.pow(4),
+        );
+
+        println!("Total res: {}", res);
     }
 
-    res
+    res.try_into().unwrap()
 }
 
 pub fn day12_task01() {
+    let input_filepath = match std::env::current_dir() {
+        Ok(filepath) => filepath.join("input_d12_t01"),
+        Err(_) => panic!("Cannot find current directory"),
+    };
+    println!("Result is {}", solve(&input_filepath));
+}
+
+pub fn day12_task02() {
     let input_filepath = match std::env::current_dir() {
         Ok(filepath) => filepath.join("input_d12_t01"),
         Err(_) => panic!("Cannot find current directory"),
