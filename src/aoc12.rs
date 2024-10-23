@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -6,6 +7,22 @@ enum PartState {
     WORKING,
     DAMAGED,
     UNKNOWN,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+enum TypeOfSolution {
+    Classic,
+    PrefixedWithUnknown,
+    PostfixedWithUnknown,
+    PreAndPostfixedWithUknown,
+}
+
+#[derive(Debug)]
+struct Solution {
+    starts_with_working: u64,
+    starts_with_damaged: u64,
+    ends_with_working: u64,
+    ends_with_damaged: u64,
 }
 
 fn count_damaged(parts_state: &Vec<PartState>) -> Vec<u32> {
@@ -129,6 +146,47 @@ fn permutate(parts_state: &Vec<PartState>) -> Vec<Vec<PartState>> {
     permutations
 }
 
+fn calculate_solution(parts_state: &Vec<PartState>, damaged_amount: &Vec<u32>) -> Solution {
+    let mut classic_solution = Solution {
+        starts_with_working: 0,
+        starts_with_damaged: 0,
+        ends_with_working: 0,
+        ends_with_damaged: 0,
+    };
+    for permutation in permutate(parts_state) {
+        if count_damaged(&permutation) == *damaged_amount {
+            if let Some(&part) = permutation.last() {
+                match part {
+                    PartState::WORKING => {
+                        classic_solution.ends_with_working += 1;
+
+                        if let Some(&part) = permutation.first() {
+                            match part {
+                                PartState::WORKING => classic_solution.starts_with_working += 1,
+                                PartState::DAMAGED => classic_solution.starts_with_damaged += 1,
+                                PartState::UNKNOWN => (),
+                            }
+                        }
+                    }
+                    PartState::DAMAGED => {
+                        classic_solution.ends_with_damaged += 1;
+
+                        if let Some(&part) = permutation.first() {
+                            match part {
+                                PartState::WORKING => classic_solution.starts_with_working += 1,
+                                PartState::DAMAGED => classic_solution.starts_with_damaged += 1,
+                                PartState::UNKNOWN => (),
+                            }
+                        }
+                    }
+                    PartState::UNKNOWN => (),
+                }
+            }
+        }
+    }
+    classic_solution
+}
+
 fn solve(file_path: &Path) -> u64 {
     let mut res = 1;
 
@@ -169,38 +227,155 @@ fn solve(file_path: &Path) -> u64 {
 
         let mut old_res = 0;
         let permutations = permutate(&parts_state);
+        let mut result: HashMap<TypeOfSolution, Solution> = HashMap::new();
+        // Calculate how many results we got from current (non-extended) flow
         let (mut ends_with_damaged, mut ends_with_working): (u64, u64) = (0, 0);
         for permutation in &permutations {
             if count_damaged(&permutation) == damaged_amount {
                 if let Some(&part) = permutation.last() {
                     match part {
-                        PartState::WORKING => ends_with_working += 1,
-                        PartState::DAMAGED => ends_with_damaged += 1,
+                        PartState::WORKING => {
+                            ends_with_working += 1;
+                        }
+                        PartState::DAMAGED => {
+                            ends_with_damaged += 1;
+                        }
                         PartState::UNKNOWN => (),
                     }
                 }
                 old_res += 1;
             }
         }
-        let mut number_of_working_prefixed: u64 = 0;
-        if ends_with_working > 0 {
+        result.insert(
+            TypeOfSolution::Classic,
+            calculate_solution(&parts_state, &damaged_amount),
+        );
+        println!(
+            "Classic solution: {:?}",
+            result.get(&TypeOfSolution::Classic).unwrap()
+        );
+        {
             let mut extended_part_state = parts_state.clone();
             extended_part_state.insert(0, PartState::UNKNOWN);
-            for permutation in permutate(&extended_part_state) {
-                if count_damaged(&permutation) == damaged_amount {
-                    number_of_working_prefixed += 1;
+            result.insert(
+                TypeOfSolution::PrefixedWithUnknown,
+                calculate_solution(&extended_part_state, &damaged_amount),
+            );
+            println!(
+                "Prefixed solution: {:?}",
+                result.get(&TypeOfSolution::PrefixedWithUnknown).unwrap()
+            );
+        }
+        {
+            let mut extended_part_state = parts_state.clone();
+            extended_part_state.push(PartState::UNKNOWN);
+            result.insert(
+                TypeOfSolution::PostfixedWithUnknown,
+                calculate_solution(&extended_part_state, &damaged_amount),
+            );
+            println!(
+                "Postfixed solution: {:?}",
+                result.get(&TypeOfSolution::PostfixedWithUnknown).unwrap()
+            );
+        }
+        {
+            let mut extended_part_state = parts_state.clone();
+            extended_part_state.insert(0, PartState::UNKNOWN);
+            extended_part_state.push(PartState::UNKNOWN);
+            result.insert(
+                TypeOfSolution::PreAndPostfixedWithUknown,
+                calculate_solution(&extended_part_state, &damaged_amount),
+            );
+            println!(
+                "Pre and postfixed solution: {:?}",
+                result
+                    .get(&TypeOfSolution::PreAndPostfixedWithUknown)
+                    .unwrap()
+            );
+        }
+
+        let number_of_el = 5;
+        let mut solutions: Vec<Vec<TypeOfSolution>> = Vec::new();
+        for i in 0..number_of_el {
+            if i == 0 {
+                solutions.push(vec![TypeOfSolution::Classic]);
+                solutions.push(vec![TypeOfSolution::PostfixedWithUnknown]);
+                continue;
+            }
+            if i == number_of_el - 1 {
+                for sol in &mut solutions {
+                    match sol.last() {
+                        Some(sol_type) => match sol_type {
+                            TypeOfSolution::Classic => {
+                                sol.push(TypeOfSolution::PrefixedWithUnknown);
+                            }
+                            TypeOfSolution::PrefixedWithUnknown => {
+                                sol.push(TypeOfSolution::PrefixedWithUnknown);
+                            }
+                            TypeOfSolution::PostfixedWithUnknown => {
+                                sol.push(TypeOfSolution::Classic);
+                            }
+                            TypeOfSolution::PreAndPostfixedWithUknown => {
+                                sol.push(TypeOfSolution::Classic);
+                            }
+                        },
+                        None => (),
+                    }
+                }
+                continue;
+            }
+
+            let mut new_solutions = Vec::new();
+            for sol in &solutions {
+                match sol.last() {
+                    Some(sol_type) => match sol_type {
+                        TypeOfSolution::Classic => {
+                            let mut new_sol_with_prefix = sol.clone();
+                            let mut new_sol_with_both_fixes = sol.clone();
+                            new_sol_with_prefix.push(TypeOfSolution::PrefixedWithUnknown);
+                            new_sol_with_both_fixes.push(TypeOfSolution::PreAndPostfixedWithUknown);
+                            new_solutions.push(new_sol_with_prefix);
+                            new_solutions.push(new_sol_with_both_fixes);
+                        }
+                        TypeOfSolution::PrefixedWithUnknown => {
+                            let mut new_sol_with_prefix = sol.clone();
+                            let mut new_sol_with_both_fixes = sol.clone();
+                            new_sol_with_prefix.push(TypeOfSolution::PrefixedWithUnknown);
+                            new_sol_with_both_fixes.push(TypeOfSolution::PreAndPostfixedWithUknown);
+                            new_solutions.push(new_sol_with_prefix);
+                            new_solutions.push(new_sol_with_both_fixes);
+                        }
+                        TypeOfSolution::PostfixedWithUnknown => {
+                            let mut new_sol_with_postfix = sol.clone();
+                            let mut new_sol_with_classic = sol.clone();
+                            new_sol_with_postfix.push(TypeOfSolution::PostfixedWithUnknown);
+                            new_sol_with_classic.push(TypeOfSolution::Classic);
+                            new_solutions.push(new_sol_with_postfix);
+                            new_solutions.push(new_sol_with_classic);
+                        }
+                        TypeOfSolution::PreAndPostfixedWithUknown => {
+                            let mut new_sol_with_postfix = sol.clone();
+                            let mut new_sol_with_classic = sol.clone();
+                            new_sol_with_postfix.push(TypeOfSolution::PostfixedWithUnknown);
+                            new_sol_with_classic.push(TypeOfSolution::Classic);
+                            new_solutions.push(new_sol_with_postfix);
+                            new_solutions.push(new_sol_with_classic);
+                        }
+                    },
+                    None => (),
                 }
             }
+            solutions = new_solutions;
         }
+
+        for sol in solutions {
+            println!("Available solution: {:?}", sol);
+        }
+
         println!("Old res: {}", old_res);
         println!(
             "Number of ending with '#': {}, with '.': {}",
             ends_with_damaged, ends_with_working
-        );
-
-        println!(
-            "Results for x5: {}",
-            ends_with_damaged.pow(5) + ends_with_working * number_of_working_prefixed.pow(4),
         );
 
         println!("Total res: {}", res);
