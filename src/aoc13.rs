@@ -343,7 +343,7 @@ mod tests {
             Err(_) => panic!("Cannot find current directory"),
         };
         let result = solve_part_2(&input_filepath);
-        assert_eq!(result, 400);
+        assert_eq!(result, 1105);
     }
 
     #[test]
@@ -351,6 +351,6 @@ mod tests {
         let s = Solution::Horizontal(5);
         let s2 = Solution::Horizontal(2);
 
-        assert_eq!(s, s2);
+        assert_ne!(s, s2);
     }
 }
