@@ -1,6 +1,10 @@
-mod aoc13;
+mod aoc14;
 
 fn main() {
-    aoc13::day13_task01();
-    aoc13::day13_task02();
+    let input_filepath = match std::env::current_dir() {
+        Ok(filepath) => filepath.join("input_d14_01"),
+        Err(_) => panic!("Cannot find current directory"),
+    };
+    let result = aoc14::solve_part_01(&input_filepath);
+    println!("And the result is {}", result);
 }
